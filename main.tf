@@ -89,13 +89,13 @@ resource "null_resource" "configure_instances" {
 resource "time_sleep" "example" {
   depends_on = [oci_core_instance.worker]
 
-  create_duration = "60s"  # Sleep for 30 seconds
+  create_duration = "60s"  # Sleep for 60 seconds
 }
 
 resource "time_sleep" "example2" {
   depends_on = [time_sleep.example]
 
-  create_duration = "180s"  # Sleep for 30 seconds
+  create_duration = "180s"  # Sleep for 180 seconds
 }
 
 resource "null_resource" "run_node_config_provision" {

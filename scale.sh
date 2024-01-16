@@ -62,6 +62,7 @@ for ((i=1; i<=$num_clusters; i++)); do
   echo $edge_id > "vyshak-mks-scale-1234-test${i}_edgeid.txt"
   sleep 10
 
+  # Extracting an saving the cert
   cert=$(echo "$response" | jq -r '.cert')
   echo "Certificate for Cluster $i: $cert"
   cat << EOF > "vyshak-mks-scale-1234-test${i}_cert.pem"
@@ -80,11 +81,9 @@ EOF
   echo "ClusterName: "vyshak-mks-scale-1234-test${i}_clustername.txt""
   echo "vyshak-mks-scale-1234-test${i}" > "vyshak-mks-scale-1234-test${i}_clustername.txt"
 
+  # PUT request
   cluster_url="$api_url$edge_id/"
   put_response=$(curl -s -X PUT -H "Content-Type: application/json" -H "X-RAFAY-API-KEYID: $api_key" -d "$response" "$cluster_url")
-
-  # Print the PUT response
-  #echo -e "\nPUT Response for Cluster $i:\n$put_response"
 
 done
 
