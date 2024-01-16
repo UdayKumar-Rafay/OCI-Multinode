@@ -73,14 +73,14 @@ resource "null_resource" "configure_instances" {
   provisioner "local-exec" {
     command = <<EOT
       #!/bin/bash
-      ssh -i /Users/vyshak/Downloads/ssh-key-2024-01-03.key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@${oci_core_instance.worker[count.index].public_ip} "sudo iptables -F && sudo iptables -t nat -F && sudo netfilter-persistent save && wget -q  -O  conjurer-linux-amd64.tar.bz2 ${var.conjurer_url}"
+      ssh -i ${var.ssh_private_key_file} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@${oci_core_instance.worker[count.index].public_ip} "sudo iptables -F && sudo iptables -t nat -F && sudo netfilter-persistent save && wget -q  -O  conjurer-linux-amd64.tar.bz2 ${var.conjurer_url}"
       sleep 5s
       # SCP the passphrase file to the remote instance
-      LC_ALL=C scp -o StrictHostKeyChecking=no -i /Users/vyshak/Downloads/ssh-key-2024-01-03.key vyshak-mks-scale-1234-test${count.index + 1}_passphrase.txt ubuntu@${oci_core_instance.worker[count.index].public_ip}:/home/ubuntu/
+      LC_ALL=C scp -o StrictHostKeyChecking=no -i ${var.ssh_private_key_file} vyshak-mks-scale-1234-test${count.index + 1}_passphrase.txt ubuntu@${oci_core_instance.worker[count.index].public_ip}:/home/ubuntu/
       sleep 5s
-      LC_ALL=C scp -o StrictHostKeyChecking=no -i /Users/vyshak/Downloads/ssh-key-2024-01-03.key vyshak-mks-scale-1234-test${count.index + 1}_cert.pem ubuntu@${oci_core_instance.worker[count.index].public_ip}:/home/ubuntu/
+      LC_ALL=C scp -o StrictHostKeyChecking=no -i ${var.ssh_private_key_file} vyshak-mks-scale-1234-test${count.index + 1}_cert.pem ubuntu@${oci_core_instance.worker[count.index].public_ip}:/home/ubuntu/
       sleep 5s
-      ssh -i /Users/vyshak/Downloads/ssh-key-2024-01-03.key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@${oci_core_instance.worker[count.index].public_ip} "tar -xjf conjurer-linux-amd64.tar.bz2 && sudo ./conjurer -m -edge-name=vyshak-mks-scale-1234-test${count.index + 1} -passphrase-file=vyshak-mks-scale-1234-test${count.index + 1}_passphrase.txt -creds-file=vyshak-mks-scale-1234-test${count.index + 1}_cert.pem"
+      ssh -i ${var.ssh_private_key_file} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@${oci_core_instance.worker[count.index].public_ip} "tar -xjf conjurer-linux-amd64.tar.bz2 && sudo ./conjurer -m -edge-name=vyshak-mks-scale-1234-test${count.index + 1} -passphrase-file=vyshak-mks-scale-1234-test${count.index + 1}_passphrase.txt -creds-file=vyshak-mks-scale-1234-test${count.index + 1}_cert.pem"
     EOT
   }
   depends_on = [time_sleep.example]
@@ -105,7 +105,7 @@ resource "null_resource" "run_node_config_provision" {
     command = <<EOT
       #!/bin/bash
       sleep 1m
-      bash -c './node_confi_provision.sh -api_url=${var.api_url} -api_key=${var.api_key} -num_clusters=${var.num_clusters}'
+      bash -c './node_config_provision.sh -api_url=${var.api_url} -api_key=${var.api_key} -num_clusters=${var.num_clusters}'
     EOT
   }
 }
