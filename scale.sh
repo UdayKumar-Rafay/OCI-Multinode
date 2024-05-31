@@ -44,7 +44,7 @@ for ((i=1; i<=$num_clusters; i++)); do
     "provision_os": "Ubuntu20.04",
     "cluster_blueprint": "default",
     "auto_approve_nodes": true,
-    "provision_k8s": "v1.28.1",
+    "provision_k8s": "v1.28.9",
     "storage_class_map": {
       "HostPath": "/var/openebs/local/"
     }

@@ -27,6 +27,10 @@ variable "num_clusters" {
   description = "Number of clusters to create"
 }
 
+variable "num_additional_nodes" {
+  description = "Number of additional nodes to add"
+}
+
 resource "null_resource" "create_cluster_object" {
   provisioner "local-exec" {
     command = "bash -c './scale.sh -api_url=${var.api_url} -api_key=${var.api_key} -num_clusters=${var.num_clusters}'"
@@ -35,7 +39,7 @@ resource "null_resource" "create_cluster_object" {
 
 resource "oci_core_instance" "worker" {
   depends_on = [null_resource.create_cluster_object]
-  count             = var.worker_instance_count
+  count             = var.worker_instance_count + var.num_additional_nodes
   display_name      = "${var.worker_instance_display_name}-${count.index + 1}"
   compartment_id    = var.compartment_ocid
   availability_domain = var.availability_domain
@@ -76,11 +80,11 @@ resource "null_resource" "configure_instances" {
       ssh -i ${var.ssh_private_key_file} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@${oci_core_instance.worker[count.index].public_ip} "sudo iptables -F && sudo iptables -t nat -F && sudo netfilter-persistent save && wget -q  -O  conjurer-linux-amd64.tar.bz2 ${var.conjurer_url}"
       sleep 5s
       # SCP the passphrase file to the remote instance
-      LC_ALL=C scp -o StrictHostKeyChecking=no -i ${var.ssh_private_key_file} vyshak-mks-scale-1234-test${count.index + 1}_passphrase.txt ubuntu@${oci_core_instance.worker[count.index].public_ip}:/home/ubuntu/
+      LC_ALL=C scp -o StrictHostKeyChecking=no -i ${var.ssh_private_key_file} vyshak-mks-scale-1234-test1_passphrase.txt ubuntu@${oci_core_instance.worker[count.index].public_ip}:/home/ubuntu/
       sleep 5s
-      LC_ALL=C scp -o StrictHostKeyChecking=no -i ${var.ssh_private_key_file} vyshak-mks-scale-1234-test${count.index + 1}_cert.pem ubuntu@${oci_core_instance.worker[count.index].public_ip}:/home/ubuntu/
+      LC_ALL=C scp -o StrictHostKeyChecking=no -i ${var.ssh_private_key_file} vyshak-mks-scale-1234-test1_cert.pem ubuntu@${oci_core_instance.worker[count.index].public_ip}:/home/ubuntu/
       sleep 5s
-      ssh -i ${var.ssh_private_key_file} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@${oci_core_instance.worker[count.index].public_ip} "tar -xjf conjurer-linux-amd64.tar.bz2 && sudo ./conjurer -m -edge-name=vyshak-mks-scale-1234-test${count.index + 1} -passphrase-file=vyshak-mks-scale-1234-test${count.index + 1}_passphrase.txt -creds-file=vyshak-mks-scale-1234-test${count.index + 1}_cert.pem"
+      ssh -i ${var.ssh_private_key_file} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@${oci_core_instance.worker[count.index].public_ip} "tar -xjf conjurer-linux-amd64.tar.bz2 && sudo ./conjurer -m -edge-name=vyshak-mks-scale-1234-test1 -passphrase-file=vyshak-mks-scale-1234-test1_passphrase.txt -creds-file=vyshak-mks-scale-1234-test1_cert.pem"
     EOT
   }
   depends_on = [time_sleep.example]
@@ -105,8 +109,51 @@ resource "null_resource" "run_node_config_provision" {
     command = <<EOT
       #!/bin/bash
       sleep 1m
-      bash -c './node_config_provision.sh -api_url=${var.api_url} -api_key=${var.api_key} -num_clusters=${var.num_clusters}'
+      bash -c './node_config_provision.sh -api_url=${var.api_url} -api_key=${var.api_key} -num_clusters=${var.num_clusters} -master_nodes=5'
     EOT
   }
 }
 
+# resource "null_resource" "configure_additional_nodes" {
+#   count = var.num_additional_nodes
+
+#   triggers = {
+#     instance_ids = element(oci_core_instance.worker[*].id, count.index + var.worker_instance_count)
+#   }
+
+#   provisioner "local-exec" {
+#     command = <<EOT
+#       #!/bin/bash
+#       ssh -i ${var.ssh_private_key_file} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@${oci_core_instance.worker[count.index + var.worker_instance_count].public_ip} "sudo iptables -F && sudo iptables -t nat -F && sudo netfilter-persistent save && wget -q  -O  conjurer-linux-amd64.tar.bz2 ${var.conjurer_url}"
+#       sleep 5s
+#       # SCP the passphrase file to the remote instance
+#       LC_ALL=C scp -o StrictHostKeyChecking=no -i ${var.ssh_private_key_file} vyshak-mks-scale-1234-test1_passphrase.txt ubuntu@${oci_core_instance.worker[count.index + var.worker_instance_count].public_ip}:/home/ubuntu/
+#       sleep 5s
+#       LC_ALL=C scp -o StrictHostKeyChecking=no -i ${var.ssh_private_key_file} vyshak-mks-scale-1234-test1_cert.pem ubuntu@${oci_core_instance.worker[count.index + var.worker_instance_count].public_ip}:/home/ubuntu/
+#       sleep 5s
+#       ssh -i ${var.ssh_private_key_file} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@${oci_core_instance.worker[count.index + var.worker_instance_count].public_ip} "tar -xjf conjurer-linux-amd64.tar.bz2 && sudo ./conjurer -m -edge-name=vyshak-mks-scale-1234-test1 -passphrase-file=vyshak-mks-scale-1234-test1_passphrase.txt -creds-file=vyshak-mks-scale-1234-test1_cert.pem"
+#     EOT
+#   }
+
+#   depends_on = [null_resource.run_node_config_provision]
+# }
+
+
+# resource "time_sleep" "example3" {
+#   depends_on = [null_resource.configure_additional_nodes]
+
+#   create_duration = "300s"  # Sleep for 60 seconds
+# }
+
+
+# resource "null_resource" "run_provision_nodes" {
+#   depends_on = [time_sleep.example3]
+
+#   provisioner "local-exec" {
+#     command = <<EOT
+#       #!/bin/bash
+#       sleep 1m
+#       bash -c './get_node_id.sh -api_url=${var.api_url} -api_key=${var.api_key} -cluster_index=1'
+#     EOT
+#   }
+# }
