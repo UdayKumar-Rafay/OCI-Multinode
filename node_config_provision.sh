@@ -18,6 +18,10 @@ while [[ $# -gt 0 ]]; do
       masters="${1#*=}"
       shift
       ;;
+    -cluster_name=*)
+      cluster_name="${1#*=}"
+      shift
+      ;;
     *)
       echo "Invalid argument: $1"
       exit 1
@@ -26,7 +30,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 for ((i=1; i<=$num_clusters; i++)); do
-  edge_id=$(cat "vyshak-mks-scale-1234-test${i}_edgeid.txt")
+  edge_id=$(cat "$cluster_name${i}_edgeid.txt")
   url="$api_url$edge_id/"
   echo "$url"
 
@@ -47,3 +51,4 @@ for ((i=1; i<=$num_clusters; i++)); do
 
   source /Users/puvvada/mks-scale/get_cluster_provision_status.sh  -api_url=$api_url  -api_key=$api_key -cluster_index=$i
 done
+

@@ -16,6 +16,10 @@ while [[ $# -gt 0 ]]; do
       num_clusters="${1#*=}"
       shift
       ;;
+    -cluster_name=*)
+      cluster_name="${1#*=}"
+      shift
+      ;;
     *)
       echo "Invalid argument: $1"
       exit 1
@@ -23,14 +27,15 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo $api_url
-echo $api_key
-echo $num_clusters
+echo "API URL: $api_url"
+echo "API Key: $api_key"
+echo "Number of Clusters: $num_clusters"
+echo "Cluster Name Prefix: $cluster_name"
 
 for ((i=1; i<=$num_clusters; i++)); do
-  cluster_name="vyshak-mks-scale-1234-test${i}"  
+  full_cluster_name="${cluster_name}${i}"  
   payload='{
-    "name": "'"$cluster_name"'",
+    "name": "'"$full_cluster_name"'",
     "description": "QE",
     "provision_params": {
       "provisionType": "CREATE",
@@ -51,38 +56,37 @@ for ((i=1; i<=$num_clusters; i++)); do
   }'
 
   # POST request
-  response=$(curl -s -X POST -H "Content-Type: application/json" -H "X-RAFAY-API-KEYID: $api_key" -d "$payload" "$api_url" | jq '.')
+  response=$(curl -s -X POST -H "Content-Type: application/json" -H "X-RAFAY-API-KEYID: $api_key" -d "$payload" "$api_url")
   if [[ $(echo "$response" | jq -r '.error') != "null" ]]; then
     echo "Error in API response: $(echo "$response" | jq -r '.error')"
+    exit 1
   fi
   
-  # Extracting an saving the edge_id
+  # Extracting and saving the edge_id
   edge_id=$(echo "$response" | jq -r '.edge_id' | awk -F'.' '{print $1}')
   echo "edge_id: $edge_id"
-  echo $edge_id > "vyshak-mks-scale-1234-test${i}_edgeid.txt"
+  echo $edge_id > "${full_cluster_name}_edgeid.txt"
   sleep 10
 
-  # Extracting an saving the cert
+  # Extracting and saving the cert
   cert=$(echo "$response" | jq -r '.cert')
   echo "Certificate for Cluster $i: $cert"
-  cat << EOF > "vyshak-mks-scale-1234-test${i}_cert.pem"
+  cat << EOF > "${full_cluster_name}_cert.pem"
 $cert
 EOF
-  #cat "$vyshak-mks-scale-123-test${i}_cert.pem"
 
   sleep 5
   # Extracting and saving the passphrase for the cluster
   passphrase=$(echo "$response" | jq -r '.passphrase')
   echo "passphrase: $passphrase"
-  echo $passphrase > "vyshak-mks-scale-1234-test${i}_passphrase.txt"
+  echo $passphrase > "${full_cluster_name}_passphrase.txt"
 
   # Extracting and saving the Cluster Name into a file
-  name=$(echo "$response" | jq -r '.name')
-  echo "ClusterName: "vyshak-mks-scale-1234-test${i}_clustername.txt""
-  echo "vyshak-mks-scale-1234-test${i}" > "vyshak-mks-scale-1234-test${i}_clustername.txt"
+  echo "ClusterName: ${full_cluster_name}_clustername.txt"
+  echo "$full_cluster_name" > "${full_cluster_name}_clustername.txt"
 
   # PUT request
-  cluster_url="$api_url$edge_id/"
+  cluster_url="${api_url}${edge_id}/"
   put_response=$(curl -s -X PUT -H "Content-Type: application/json" -H "X-RAFAY-API-KEYID: $api_key" -d "$response" "$cluster_url")
 
 done
