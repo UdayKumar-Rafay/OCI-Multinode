@@ -190,3 +190,20 @@ variable "ssh_username" {
 variable "ssh_private_key_file" {
   type        = string
 }
+
+variable "private_key_password" {
+  type        = string
+}
+
+variable "volume_count" {
+  description = "Number of volumes to create"
+  type        = number
+  default     = 3
+}
+
+
+variable "new_worker_instance_count" {
+  description = "Number of new worker instances to create"
+  type        = number
+  default     = 3
+}
