@@ -112,26 +112,27 @@ resource "time_sleep" "example" {
 
 
 resource "null_resource" "clear_collected_configs" {
-  # This ensures it only runs on destroy
-  lifecycle {
-    create_before_destroy = false
-    prevent_destroy = false
-  }
-
   provisioner "local-exec" {
     command = <<EOT
       #!/bin/bash
-      # Check if this is a destroy operation by inspecting the 'destroy_time' variable
       if [ ! -z "${local.destroy_time}" ]; then
         echo "Clearing collected node configurations..."
         echo "[]" > /tmp/collected_node_configs.json
-        python3 -c "import ruamel.yaml; yaml = ruamel.yaml.YAML(); config = yaml.load(open('/Users/manish/Desktop/rctl/mks-scale-1.yaml')); config['spec']['config']['nodes'] = []; yaml.dump(config, open('/Users/manish/Desktop/rctl/mks-scale-1.yaml', 'w'))"
+        python3 -c '
+import ruamel.yaml
+yaml = ruamel.yaml.YAML()
+yaml.preserve_quotes = True
+yaml.indent(mapping=2, sequence=4, offset=2)
+
+config = {"nodes": []}
+with open("/Users/uday/mks-scale/uday-nodes.yaml", "w") as f:
+    yaml.dump(config, f)
+'
       fi
     EOT
   }
 
   triggers = {
-    # The 'destroy_time' variable acts as a trigger for destroy
     destroy_time = "${timestamp()}"
   }
 }

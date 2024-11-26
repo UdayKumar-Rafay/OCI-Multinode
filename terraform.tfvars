@@ -19,18 +19,18 @@ availability_domain="PaOl:PHX-AD-3"
 shape="VM.Standard.E4.Flex"
 
 ###############Please change the configurations below as per the usage############################
-worker_instance_count=1
+# worker_instance_count=1
 conjurer_url="https://s3-us-west-1.amazonaws.com/dev-rafay-conjurer/vasu-tb/publish/conjurer-linux-amd64.tar.bz2"
-worker_instance_display_name = "manish-scale"
-user_ocid        = "ocid1.user.oc1..aaaaaaaai2r6n7wriasubzlrfedekgfm5dk4bmaj4qs6pnynm4khnefxxunq"
-private_key_path = "/Users/manish/.oci/oci_api_key.pem"
-fingerprint      = "cc:7a:1a:ca:31:7c:a9:88:e0:9e:d3:70:af:62:6d:ec"
+worker_instance_display_name = "uday-test"
+user_ocid        = "ocid1.user.oc1..aaaaaaaaa4ti2tydptuldp45hwy5e7bgspmmyfu4zl57xop2gj6lq44pttga"
+private_key_path = "/Users/uday/.oci/oci_private_key.pem"
+fingerprint      = "40:6b:d0:ce:28:7a:5c:bf:36:f9:93:cb:8b:66:4e:87"
 
 ssh_public_keys = <<EOT
-ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPsQbQ0CsFWteJliE41FNiChdWAtQOUwDJRnXWjX2L61JxQCfS8+V7R/1pbFwU5d7IZf6YxnWYwjf8BfODgyScN2HezzbLELOBFeMI6YHylLrdf5uIK7Ci+00GMXKOuxii7D7kh4kwUz4U4rvrpAEmywUWNomobWzdvM/uCW285C9pqA/Kfl17OOE38L1t39vdf6So7c8KI12V7X6QvLTIhHqJt2FPMSptRD4jnrTQEi+2DYKb8+WB6wOqNVYVVpglOkV0O9tDFYGSuUfV++aaNArnKjNXSB/dSilIE4+6GURd+/APwmsM9IfV7XxLLAYn1swp3719HtEFd0zsL6/gHwPBcXru2q6J8Zll5BeGYBXUS+j66WS7T8yYdCIDcAHLa4yyNtGlHWBY8E1WPelp6FBWYdnBN3vjXbueOMeo4UJPnAI3s2Hb9qsedLXaYix7lY17wqFUQOJ5pvKszaHMPDuTDDYDVECV9JCNTKauSIVlw5KjLe8XJ7cSxsrqH/uXkKz9/oQcZDUMCXi4eFu9UhzLVbgcByMTfkUKaW4eE+BJ17rU4f9RiKAaTDjPuyxtAl0crGnYUmh30ZvH4GHuRddgK7EFzdyGa1pqEJ5XVXqWlyHVGFidvholqRUAn3YmUwWnglEerBgw9vVlsHmzUZifhpWNVaeGtZonNf72zQ== manish@Rafaysystemss-MacBook-Pro.local
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDiurh+OZi4YYLxDOuoiDPl/hCxVRfnNjPy58WZw22WIdbKcBcIEL+hY3VSTFNZJ82RD9lEoS5U1+Yg3k92OOhvgAmTeH3/U5y0ZzHjuqwt9LsgjnqYQ/Yc5Hp/hiAmsmNNnlp7EqtV5r6fGE9GZjiSswdixxXiDA1yi1lozSGfC/njlVq8ZC6fUnkdAyuEh2GhE9/ck+FFsTBrayOcZClQonw2oDBVk3RVbNiHQodEYeaL+74avB3CVoi/mKCB79f9GOCo744qYEFQ7cCPH4LosVP5eUEd2MJs81jGlzq745yZ0tPyTDAlgXC+YKmiKv6ucCYzThsHlmruLMty+gfR9TyfCiq7cKJCkvY2YX1SIkLemy7Qa/ybgH9addTDMbuP2HhUhMPQ+Cm57ahx/uFecY0FHVPJJBEW8w8y1vonxxR8tumxDVpZYqaYZ/gsTeh7o/Cawzdqvm0HYIkI0je18EM7BmGBHFSw/N1LjuC63tdjqNrDTmPvfmZrk0sXD+pAfzkisdF9wBk6MaFZ054rTATPZmvEmnW8/KpCRwH6pxnWtY/vkQ9YykO1eor7KPkbORk5+JhTzDH1mSx4vSdNt1FMo6Ed40SGB5QguIudLHdDbdgjgeYiEwc97c+QIrIR6l1cp8y9+kOjXHGwBkSP4gfyq5LateNDeTlRfCfPKQ== uday.kumar@rafay.co
 EOT
 
-ssh_private_key_file="/Users/manish/.ssh/id_rsa"
+ssh_private_key_file="/Users/uday/.ssh/id_rsa"
 ssh_username="ubuntu"
 private_key_password="rafay"
 

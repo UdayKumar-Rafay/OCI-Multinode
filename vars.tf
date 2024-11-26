@@ -58,11 +58,14 @@ variable "cp_instance_count" {
 }
 
 variable "worker_instance_count" {
-  description = "Number of identical worker node instances to launch from a single module."
+  description = "Number of identical worker node instances to launch (min: 1, max: any)"
   type        = number
-  default     = 1
+  
+  validation {
+    condition     = var.worker_instance_count >= 1
+    error_message = "Worker count must be atleast 1 node."
+  }
 }
-
 
 variable "cp_instance_display_name" {
   description = "(Updatable) A user-friendly name for the instance. Does not have to be unique, and it's changeable."
