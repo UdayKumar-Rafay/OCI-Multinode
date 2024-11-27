@@ -96,7 +96,8 @@ resource "null_resource" "configure_instances" {
       sleep 30s
       ssh -i ${var.ssh_private_key_file} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@${oci_core_instance.worker[count.index].public_ip} "
       sudo iptables -F;
-      sudo iptables -t nat -F;
+      sudo apt remove -yq iptables-persistent --purge;
+      sudo apt install bzip2;
       "
     EOT
   }

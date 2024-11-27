@@ -94,7 +94,7 @@ class OCINodeManager:
             return vnic.public_ip, vnic.private_ip
 
     def configure_instance(self, public_ip):
-        """Configure the instance (iptables rules)"""
+        """Configure the instance (iptables rules and packages)"""
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         
@@ -104,8 +104,15 @@ class OCINodeManager:
         while retries > 0:
             try:
                 ssh.connect(public_ip, username="ubuntu", pkey=private_key)
-                stdin, stdout, stderr = ssh.exec_command("sudo iptables -F; sudo iptables -t nat -F;")
-                stdout.channel.recv_exit_status()
+                # Execute commands
+                commands = [
+                    "sudo iptables -F",
+                    "sudo apt remove -yq iptables-persistent --purge",
+                    "sudo apt install bzip2"
+                ]
+                for cmd in commands:
+                    stdin, stdout, stderr = ssh.exec_command(cmd)
+                    stdout.channel.recv_exit_status()
                 break
             except Exception as e:
                 print(f"Retry connecting to {public_ip}. Attempts left: {retries}")
