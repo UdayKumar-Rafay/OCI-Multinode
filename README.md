@@ -1,6 +1,8 @@
 
 # OCI Multi-Node Creation Documentation
 
+## Method 1: Using Terraform (Original Method)
+
 ## Prerequisites
 
 ### Required Packages
@@ -91,3 +93,108 @@ chmod +x create-nodes.sh
 - The nodes.yaml file must exist and be writable
 - Ensure proper OCI permissions for resource creation/destruction
 
+
+
+
+## Method 2: Using Python Script (Alternative Method)
+
+### Prerequisites
+
+1. Python 3.6+ and required packages:
+```bash
+pip3 install oci paramiko pyyaml
+```
+
+2. OCI CLI configuration and authentication
+
+### Configuration Setup
+
+1. Edit the configuration in `oci_node_manager.py`. Update the following values in the `__init__` method:
+```python
+self.config = {
+    "tenancy": "your-tenancy-ocid",
+    "user": "your-user-ocid",
+    "fingerprint": "your-api-key-fingerprint",
+    "key_file": "/path/to/your/oci_private_key.pem",
+    "region": "your-region",  # e.g., "us-phoenix-1"
+    "compartment_id": "your-compartment-ocid",
+    "availability_domain": "your-AD",  # e.g., "PaOl:PHX-AD-3"
+    "subnet_id": "your-subnet-ocid",
+    "image_id": "your-image-ocid",  # Ubuntu image OCID
+    "ssh_public_key_path": "/path/to/your/id_rsa.pub",
+    "ssh_private_key_path": "/path/to/your/id_rsa"
+}
+```
+
+2. Make the script executable:
+```bash
+chmod +x oci_node_manager.py
+```
+
+### Usage
+
+1. Deploy nodes:
+```bash
+# Deploy single node
+./oci_node_manager.py deploy --count 1
+
+# Deploy multiple nodes
+./oci_node_manager.py deploy --count 5
+
+# Deploy with custom concurrency
+./oci_node_manager.py deploy --count 10 --concurrent 8
+```
+
+2. Destroy nodes:
+```bash
+# Destroy all deployed nodes
+./oci_node_manager.py destroy
+
+# Destroy with custom concurrency
+./oci_node_manager.py destroy --concurrent 8
+```
+
+### Features
+- Concurrent node creation and deletion
+- Automatic YAML configuration generation
+- Progress tracking and detailed feedback
+- Error handling and recovery
+- Configurable concurrency limits
+
+### Generated Files
+- `nodes.yaml`: Contains node configuration details
+- `instance_ids.txt`: Backup of instance IDs for tracking
+
+### Important Notes
+- The script uses the VM.Standard.E4.Flex shape with 1 OCPU and 4GB RAM by default
+- Instances are named as "uday-test-1", "uday-test-2", etc.
+- The script automatically configures iptables rules on the instances
+- Maximum concurrent operations can be adjusted using the `--concurrent` flag
+- Default concurrency is set to 5 to respect API rate limits
+
+### Troubleshooting
+1. If deployment fails:
+   - Check OCI credentials and permissions
+   - Verify subnet and image OCIDs
+   - Ensure SSH keys are properly configured
+
+2. If destroy operation fails:
+   - Check if instances still exist in OCI console
+   - Verify the YAML file and instance_ids.txt are present
+   - Ensure OCI API access is working
+
+### Comparison with Terraform Method
+Advantages:
+- Faster concurrent operations
+- Real-time progress feedback
+- Simpler configuration
+- Direct OCI API interaction
+
+Disadvantages:
+- Less infrastructure-as-code features
+- Manual state management
+- Limited to specific use case
+
+Choose the method that best suits your needs:
+- Use Terraform method for infrastructure-as-code approach
+- Use Python script for quick deployments and better concurrency
