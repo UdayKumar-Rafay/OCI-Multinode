@@ -12,6 +12,8 @@ from datetime import datetime
 
 class OCINodeManager:
     def __init__(self):
+        # Load environment variables from .env file
+        load_dotenv()
         # OCI Configuration
         self.config = {
             "tenancy": "ocid1.tenancy.oc1..aaaaaaaaaa3ghjcqbrbzmssbzhxzhxf24rpmuyxbaxwcj2axwoqkpd56ljkq",
@@ -331,10 +333,10 @@ class OCINodeManager:
             print("Some instances failed to terminate. Please check the logs above for details.")
             print("No changes were made to YAML file for failed terminations.")
 
-    def stop_instance(self, instance_id):
+    def stop_instance(self, instance_id, hostname):
         """Stop a single instance"""
         try:
-            print(f"Stopping instance {instance_id}...")
+            print(f"Stopping instance {hostname}...")
             self.compute_client.instance_action(instance_id, "STOP")
             
             while True:
@@ -342,18 +344,18 @@ class OCINodeManager:
                 state = get_instance.data.lifecycle_state
                 if state == "STOPPED":
                     break
-                print(f"Waiting for instance {instance_id} to stop... Current state: {state}")
+                print(f"Waiting for instance {hostname} to stop... Current state: {state}")
                 time.sleep(5)
             
             return instance_id
         except Exception as e:
-            print(f"Error stopping instance {instance_id}: {str(e)}")
+            print(f"Error stopping instance {hostname}: {str(e)}")
             raise
 
-    def start_instance(self, instance_id):
+    def start_instance(self, instance_id, hostname):
         """Start a single instance"""
         try:
-            print(f"Starting instance {instance_id}...")
+            print(f"Starting instance {hostname}...")
             self.compute_client.instance_action(instance_id, "START")
             
             while True:
@@ -361,12 +363,12 @@ class OCINodeManager:
                 state = get_instance.data.lifecycle_state
                 if state == "RUNNING":
                     break
-                print(f"Waiting for instance {instance_id} to start... Current state: {state}")
+                print(f"Waiting for instance {hostname} to start... Current state: {state}")
                 time.sleep(5)
             
             return instance_id
         except Exception as e:
-            print(f"Error starting instance {instance_id}: {str(e)}")
+            print(f"Error starting instance {hostname}: {str(e)}")
             raise
 
     def manage_instances(self, action, instance_ids):
@@ -375,19 +377,31 @@ class OCINodeManager:
             print("No instance IDs provided.")
             return
 
+        # Get hostname mapping
+        instance_id_to_hostname = {}
+        try:
+            with open(self.yaml_file, 'r') as f:
+                yaml_config = yaml.safe_load(f) or {"nodes": []}
+                for node in yaml_config.get("nodes", []):
+                    instance_id_to_hostname[node["instance_id"]] = node["hostname"]
+        except FileNotFoundError:
+            print(f"YAML file {self.yaml_file} not found.")
+            return
+
         action_method = self.stop_instance if action == "stop" else self.start_instance
         print(f"Starting {action} operation for {len(instance_ids)} instances...")
         
         completed_count = 0
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            futures = [executor.submit(action_method, instance_id) 
+            futures = [executor.submit(action_method, instance_id, instance_id_to_hostname.get(instance_id, "Unknown")) 
                       for instance_id in instance_ids]
             
             for future in as_completed(futures):
                 try:
                     instance_id = future.result()
+                    hostname = instance_id_to_hostname.get(instance_id, "Unknown")
                     completed_count += 1
-                    print(f"Successfully {action}ed instance {instance_id}")
+                    print(f"Successfully {action}ed instance {hostname}")
                 except Exception as e:
                     print(f"Failed to {action} instance: {str(e)}")
 
