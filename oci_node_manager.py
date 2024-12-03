@@ -427,7 +427,7 @@ def main():
     parser.add_argument('--concurrent', type=int, help='Maximum concurrent operations', 
                        default=5)
     parser.add_argument('--basename', type=str, help='Base name for the nodes', 
-                        default='uday-test')
+                        default='rafay-paas')
     parser.add_argument('--hostnames', nargs='+', help='List of hostnames to manage')
     
     args = parser.parse_args()
