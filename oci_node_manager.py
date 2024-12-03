@@ -242,7 +242,6 @@ class OCINodeManager:
         """Destroy multiple instances concurrently"""
         if not instance_ids:
             try:
-                # If no instance IDs provided, read from file
                 with open('instance_ids.txt', 'r') as f:
                     instance_ids = [line.strip() for line in f.readlines()]
             except FileNotFoundError:
@@ -271,26 +270,19 @@ class OCINodeManager:
                 try:
                     instance_id = future.result()
                     terminated_instances.append(instance_id)
-                    print(f"Successfully terminated instance {instance_id_to_hostname.get(instance_id, 'Unknown')} ({instance_id})")
+                    print(f"Successfully terminated instance {instance_id_to_hostname.get(instance_id, 'Unknown')}")
                 except Exception as e:
                     print(f"Failed to terminate instance: {str(e)}")
-                    # Log the full error for debugging
-                    print(f"Full error details: {e}")
                     continue
 
-        # Only update YAML and instance_ids.txt if we actually terminated some instances
+        # Only update configuration files if we successfully terminated some instances
         if terminated_instances:
             try:
                 # Update YAML file by removing only successfully terminated instances
                 with open(self.yaml_file, 'r') as f:
                     yaml_config = yaml.safe_load(f) or {"nodes": []}
                 
-                # Create a backup of the YAML file before modification
-                backup_file = f"{self.yaml_file}.backup"
-                with open(backup_file, 'w') as f:
-                    yaml.dump(yaml_config, f, default_flow_style=False)
-                
-                # Filter out only successfully terminated nodes
+                # Filter out successfully terminated nodes
                 original_length = len(yaml_config["nodes"])
                 yaml_config["nodes"] = [
                     node for node in yaml_config["nodes"] 
@@ -299,39 +291,44 @@ class OCINodeManager:
                 
                 # Only write back if we successfully filtered
                 if len(yaml_config["nodes"]) != original_length:
-                    with open(self.yaml_file, 'w') as f:
-                        yaml.dump(yaml_config, f, default_flow_style=False)
-                    print("YAML configuration updated successfully.")
-                
-            except Exception as e:
-                print(f"Error updating YAML file: {str(e)}")
-                print(f"YAML backup available at: {backup_file}")
-                return
+                    try:
+                        with open(self.yaml_file, 'w') as f:
+                            yaml.dump(yaml_config, f, default_flow_style=False)
+                        print("YAML configuration updated successfully.")
+                    except Exception as e:
+                        # Create backup only if writing fails
+                        backup_file = f"{self.yaml_file}.backup"
+                        with open(backup_file, 'w') as f:
+                            yaml.dump(yaml_config, f, default_flow_style=False)
+                        print(f"Error updating YAML file: {str(e)}")
+                        print(f"YAML backup created at: {backup_file}")
+                        return
 
-            try:
-                # Update instance_ids.txt
-                if os.path.exists('instance_ids.txt'):
-                    with open('instance_ids.txt', 'r') as f:
-                        remaining_ids = [line.strip() for line in f.readlines() 
-                                       if line.strip() not in terminated_instances]
-                    
-                    # Create backup of instance_ids.txt
+                try:
+                    # Update instance_ids.txt
+                    if os.path.exists('instance_ids.txt'):
+                        with open('instance_ids.txt', 'r') as f:
+                            remaining_ids = [line.strip() for line in f.readlines() 
+                                           if line.strip() not in terminated_instances]
+                        
+                        with open('instance_ids.txt', 'w') as f:
+                            for id in remaining_ids:
+                                f.write(f"{id}\n")
+                except Exception as e:
+                    # Create backup only if writing fails
                     with open('instance_ids.txt.backup', 'w') as f:
                         for id in remaining_ids:
                             f.write(f"{id}\n")
-                    
-                    # Write updated instance_ids.txt
-                    with open('instance_ids.txt', 'w') as f:
-                        for id in remaining_ids:
-                            f.write(f"{id}\n")
+                    print(f"Error updating instance_ids.txt: {str(e)}")
+                    print("Backup of instance_ids.txt is available at: instance_ids.txt.backup")
+
             except Exception as e:
-                print(f"Error updating instance_ids.txt: {str(e)}")
-                print("Backup of instance_ids.txt is available at: instance_ids.txt.backup")
+                print(f"Error processing configuration files: {str(e)}")
+                return
 
         print(f"Successfully terminated {len(terminated_instances)} out of {len(instance_ids)} instances!")
         if len(terminated_instances) < len(instance_ids):
             print("Some instances failed to terminate. Please check the logs above for details.")
-            print("No changes were made to YAML file for failed terminations.")
 
     def stop_instance(self, instance_id, hostname):
         """Stop a single instance"""
