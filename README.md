@@ -97,7 +97,7 @@ chmod +x create-nodes.sh
 
 1. Python 3.6+ and required packages:
 ```bash
-pip3 install oci paramiko pyyaml
+pip3 install oci paramiko pyyaml python-dotenv
 ```
 
 2. OCI CLI configuration and authentication
