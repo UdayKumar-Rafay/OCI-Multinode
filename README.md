@@ -1,4 +1,3 @@
-
 # OCI Multi-Node Creation Documentation
 
 ## Method 1: Using Terraform (Original Method)
@@ -60,7 +59,6 @@ EOT
 ssh_private_key_file = "/path/to/your/.ssh/id_rsa"
 ```
 
-
 ## Usage
 
 1. Make the deployment script executable:
@@ -75,8 +73,8 @@ chmod +x create-nodes.sh
 
 3. Choose from the menu:
     - Option 1: Deploy worker nodes
-   - Option 2: Destroy infrastructure
-   - Option 3: Exit
+    - Option 2: Destroy infrastructure
+    - Option 3: Exit
 
 4. For deployment:
    - Enter the number of worker nodes when prompted
@@ -92,9 +90,6 @@ chmod +x create-nodes.sh
 - SSH keys must be generated without a passphrase
 - The nodes.yaml file must exist and be writable
 - Ensure proper OCI permissions for resource creation/destruction
-
-
-
 
 ## Method 2: Using Python Script (Alternative Method)
 
@@ -133,26 +128,89 @@ chmod +x oci_node_manager.py
 
 ### Usage
 
-1. Deploy nodes:
-```bash
-# Deploy single node
-./oci_node_manager.py deploy --count 1
+#### Deploy Nodes
+- Deploy a single node:
+  ```bash
+  ./oci_node_manager.py deploy --count 1
+  ```
 
-# Deploy multiple nodes
-./oci_node_manager.py deploy --count 5
+- Deploy multiple nodes:
+  ```bash
+  ./oci_node_manager.py deploy --count 5
+  ```
 
-# Deploy with custom concurrency
-./oci_node_manager.py deploy --count 10 --concurrent 8
-```
+- Deploy with custom instance naming:
+  ```bash
+  ./oci_node_manager.py deploy --count 3 --basename custom-worker
+  # Creates: custom-worker-1, custom-worker-2, custom-worker-3
+  ```
 
-2. Destroy nodes:
-```bash
-# Destroy all deployed nodes
-./oci_node_manager.py destroy
+- Deploy with custom concurrency:
+  ```bash
+  ./oci_node_manager.py deploy --count 10 --concurrent 8
+  ```
 
-# Destroy with custom concurrency
-./oci_node_manager.py destroy --concurrent 8
-```
+- Combine multiple flags:
+  ```bash
+  ./oci_node_manager.py deploy --count 5 --basename prod-node --concurrent 3
+  ```
+
+### Available Deployment Flags
+| Flag | Description | Default | Example |
+|------|-------------|---------|---------|
+| `--count` | Number of nodes to deploy | 1 | `--count 5` |
+| `--basename` | Base name for instance naming | uday-test | `--basename worker` |
+| `--concurrent` | Maximum concurrent operations | 5 | `--concurrent 8` |
+
+### Node Naming
+- Nodes are automatically numbered sequentially
+- Numbering continues from the last used index in nodes.yaml
+- Example sequence with `--basename worker`:
+  - First deployment: worker-1, worker-2, worker-3
+  - Second deployment: worker-4, worker-5, worker-6
+
+#### Manage Nodes by Hostname
+- Stop specific nodes by hostname:
+  ```bash
+  ./oci_node_manager.py stop --hostnames node-name-1 node-name-2
+  ```
+
+- Start specific nodes by hostname:
+  ```bash
+  ./oci_node_manager.py start --hostnames node-name-1 node-name-2
+  ```
+
+- Destroy specific nodes by hostname:
+  ```bash
+  ./oci_node_manager.py destroy --hostnames node-name-1 node-name-2
+  ```
+
+#### Destroy Nodes
+- Destroy all deployed nodes:
+  ```bash
+  ./oci_node_manager.py destroy
+  ```
+
+- Destroy specific nodes by hostname:
+  ```bash
+  ./oci_node_manager.py destroy --hostnames worker-1 worker-2
+  ```
+
+- Destroy with custom concurrency:
+  ```bash
+  ./oci_node_manager.py destroy --concurrent 8
+  ```
+
+- Combine multiple flags:
+  ```bash
+  ./oci_node_manager.py destroy --hostnames worker-1 worker-2 --concurrent 3
+  ```
+
+### Available Destroy Flags
+| Flag | Description | Default | Example |
+|------|-------------|---------|---------|
+| `--hostnames` | Specific nodes to destroy | None (destroys all) | `--hostnames worker-1 worker-2` |
+| `--concurrent` | Maximum concurrent operations | 5 | `--concurrent 8` |
 
 ### Features
 - Concurrent node creation and deletion
@@ -160,6 +218,7 @@ chmod +x oci_node_manager.py
 - Progress tracking and detailed feedback
 - Error handling and recovery
 - Configurable concurrency limits
+- Manage nodes by hostname for easier identification
 
 ### Generated Files
 - `nodes.yaml`: Contains node configuration details

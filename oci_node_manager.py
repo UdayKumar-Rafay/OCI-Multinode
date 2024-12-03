@@ -121,31 +121,37 @@ class OCINodeManager:
         
         ssh.close()
 
-    def update_yaml(self, nodes):
-        """Update the YAML file with node information"""
-        yaml_config = {"nodes": []}
-        
-        for node in nodes:
-            yaml_config["nodes"].append({
-                "arch": "amd64",
-                "hostname": node["hostname"],
-                "operatingSystem": "Ubuntu20.04",
-                "privateip": node["private_ip"],
-                "ssh": {
-                    "ipAddress": node["public_ip"],
-                    "port": "22",
-                    "username": "ubuntu"
-                },
-                "instance_id": node["instance_id"]
-            })
+    def update_yaml(self, new_nodes):
+        """Update the YAML file with new node information, appending to existing nodes"""
+        try:
+            with open(self.yaml_file, 'r') as f:
+                yaml_config = yaml.safe_load(f) or {"nodes": []}
+        except FileNotFoundError:
+            yaml_config = {"nodes": []}
+
+        yaml_config["nodes"].extend(new_nodes)
 
         with open(self.yaml_file, 'w') as f:
             yaml.dump(yaml_config, f, default_flow_style=False)
 
-    def create_and_configure_instance(self, index):
+    def get_next_index(self, basename):
+        """Get the next index for naming new nodes"""
+        try:
+            with open(self.yaml_file, 'r') as f:
+                yaml_config = yaml.safe_load(f) or {"nodes": []}
+            existing_hostnames = [node["hostname"] for node in yaml_config.get("nodes", [])]
+            existing_indices = [
+                int(hostname.split('-')[-1]) for hostname in existing_hostnames
+                if hostname.startswith(basename) and hostname.split('-')[-1].isdigit()
+            ]
+            return max(existing_indices, default=0) + 1
+        except FileNotFoundError:
+            return 1
+
+    def create_and_configure_instance(self, index, basename):
         """Create and configure a single instance"""
         try:
-            display_name = f"uday-test-{index+1}"
+            display_name = f"{basename}-{index}"
             print(f"Creating instance {display_name}...")
             
             instance = self.create_instance(display_name)
@@ -166,16 +172,17 @@ class OCINodeManager:
             print(f"Error creating instance {display_name}: {str(e)}")
             raise
 
-    def deploy_nodes(self, count):
+    def deploy_nodes(self, count, basename):
         """Deploy multiple nodes concurrently"""
         nodes = []
         instance_ids = []
         futures = []
 
         print(f"Starting deployment of {count} nodes...")
+        next_index = self.get_next_index(basename)
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             # Submit all creation tasks
-            futures = [executor.submit(self.create_and_configure_instance, i) 
+            futures = [executor.submit(self.create_and_configure_instance, next_index + i, basename) 
                       for i in range(count)]
             
             # Process completed tasks
@@ -192,102 +199,236 @@ class OCINodeManager:
         print("Updating YAML configuration...")
         self.update_yaml(nodes)
         
-        with open('instance_ids.txt', 'w') as f:
+        with open('instance_ids.txt', 'a') as f:  # Append to the file
             for id in instance_ids:
                 f.write(f"{id}\n")
         
         print(f"Deployment completed successfully! Created {len(nodes)} nodes.")
 
-    def terminate_instance(self, instance_id):
+    def terminate_instance(self, instance_id, hostname):
         """Terminate a single instance"""
         try:
-            print(f"Terminating instance {instance_id}...")
+            print(f"Terminating instance {hostname} ...")
             self.compute_client.terminate_instance(instance_id)
             
-            while True:
+            retries = 3
+            while retries > 0:
                 try:
                     get_instance = self.compute_client.get_instance(instance_id)
                     state = get_instance.data.lifecycle_state
                     if state == "TERMINATED":
                         break
-                    print(f"Waiting for instance {instance_id} to terminate... Current state: {state}")
+                    print(f"Waiting for instance {hostname} to terminate... Current state: {state}")
                     time.sleep(5)
+                    retries -= 1
                 except oci.exceptions.ServiceError as e:
                     if e.status == 404:  # Instance not found means it's terminated
                         break
-                    raise
+                    if retries > 0:
+                        print(f"Retrying... {retries} attempts left")
+                        time.sleep(5)
+                        retries -= 1
+                    else:
+                        raise
             
             return instance_id
         except Exception as e:
-            print(f"Error terminating instance {instance_id}: {str(e)}")
+            print(f"Error terminating instance {hostname} : {str(e)}")
             raise
 
-    def destroy_nodes(self):
-        """Destroy all nodes concurrently"""
-        try:
-            # Get instance IDs from both YAML and backup file
-            instance_ids = set()
-            
-            # Try reading from YAML
+    def destroy_nodes(self, instance_ids=None):
+        """Destroy multiple instances concurrently"""
+        if not instance_ids:
             try:
-                with open(self.yaml_file, 'r') as f:
-                    yaml_config = yaml.safe_load(f)
-                    instance_ids.update(node.get('instance_id') 
-                                     for node in yaml_config.get('nodes', []))
-            except FileNotFoundError:
-                pass
-
-            # Try reading from backup file
-            try:
+                # If no instance IDs provided, read from file
                 with open('instance_ids.txt', 'r') as f:
-                    instance_ids.update(line.strip() for line in f.readlines())
+                    instance_ids = [line.strip() for line in f.readlines()]
             except FileNotFoundError:
-                pass
-
-            instance_ids = list(filter(None, instance_ids))  # Remove None values
-
-            if not instance_ids:
-                print("No instance IDs found to terminate.")
+                print("No instance IDs provided and instance_ids.txt not found.")
                 return
 
-            print(f"Starting termination of {len(instance_ids)} instances...")
-            terminated_count = 0
-            
-            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                # Submit all termination tasks
-                futures = [executor.submit(self.terminate_instance, instance_id) 
-                          for instance_id in instance_ids]
-                
-                # Process completed tasks
-                for future in as_completed(futures):
-                    try:
-                        instance_id = future.result()
-                        terminated_count += 1
-                        print(f"Successfully terminated instance {instance_id}")
-                    except Exception as e:
-                        print(f"Failed to terminate instance: {str(e)}")
+        # Map instance IDs to hostnames
+        instance_id_to_hostname = {}
+        try:
+            with open(self.yaml_file, 'r') as f:
+                yaml_config = yaml.safe_load(f) or {"nodes": []}
+                for node in yaml_config.get("nodes", []):
+                    instance_id_to_hostname[node["instance_id"]] = node["hostname"]
+        except FileNotFoundError:
+            print(f"YAML file {self.yaml_file} not found.")
+            return
 
-            # Clear configuration files
-            with open(self.yaml_file, 'w') as f:
-                yaml.dump({"nodes": []}, f)
+        print(f"Starting termination of {len(instance_ids)} instances...")
+        terminated_instances = []  # Keep track of successfully terminated instances
+        
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = [executor.submit(self.terminate_instance, instance_id, instance_id_to_hostname.get(instance_id, "Unknown")) 
+                      for instance_id in instance_ids]
+            
+            for future in as_completed(futures):
+                try:
+                    instance_id = future.result()
+                    terminated_instances.append(instance_id)
+                    print(f"Successfully terminated instance {instance_id_to_hostname.get(instance_id, 'Unknown')} ({instance_id})")
+                except Exception as e:
+                    print(f"Failed to terminate instance: {str(e)}")
+                    # Log the full error for debugging
+                    print(f"Full error details: {e}")
+                    continue
+
+        # Only update YAML and instance_ids.txt if we actually terminated some instances
+        if terminated_instances:
+            try:
+                # Update YAML file by removing only successfully terminated instances
+                with open(self.yaml_file, 'r') as f:
+                    yaml_config = yaml.safe_load(f) or {"nodes": []}
+                
+                # Create a backup of the YAML file before modification
+                backup_file = f"{self.yaml_file}.backup"
+                with open(backup_file, 'w') as f:
+                    yaml.dump(yaml_config, f, default_flow_style=False)
+                
+                # Filter out only successfully terminated nodes
+                original_length = len(yaml_config["nodes"])
+                yaml_config["nodes"] = [
+                    node for node in yaml_config["nodes"] 
+                    if node.get("instance_id") not in terminated_instances
+                ]
+                
+                # Only write back if we successfully filtered
+                if len(yaml_config["nodes"]) != original_length:
+                    with open(self.yaml_file, 'w') as f:
+                        yaml.dump(yaml_config, f, default_flow_style=False)
+                    print("YAML configuration updated successfully.")
+                
+            except Exception as e:
+                print(f"Error updating YAML file: {str(e)}")
+                print(f"YAML backup available at: {backup_file}")
+                return
 
             try:
-                os.remove('instance_ids.txt')
-            except FileNotFoundError:
-                pass
+                # Update instance_ids.txt
+                if os.path.exists('instance_ids.txt'):
+                    with open('instance_ids.txt', 'r') as f:
+                        remaining_ids = [line.strip() for line in f.readlines() 
+                                       if line.strip() not in terminated_instances]
+                    
+                    # Create backup of instance_ids.txt
+                    with open('instance_ids.txt.backup', 'w') as f:
+                        for id in remaining_ids:
+                            f.write(f"{id}\n")
+                    
+                    # Write updated instance_ids.txt
+                    with open('instance_ids.txt', 'w') as f:
+                        for id in remaining_ids:
+                            f.write(f"{id}\n")
+            except Exception as e:
+                print(f"Error updating instance_ids.txt: {str(e)}")
+                print("Backup of instance_ids.txt is available at: instance_ids.txt.backup")
 
-            print(f"Successfully terminated {terminated_count} out of {len(instance_ids)} instances!")
-            print("YAML configuration cleared.")
+        print(f"Successfully terminated {len(terminated_instances)} out of {len(instance_ids)} instances!")
+        if len(terminated_instances) < len(instance_ids):
+            print("Some instances failed to terminate. Please check the logs above for details.")
+            print("No changes were made to YAML file for failed terminations.")
 
+    def stop_instance(self, instance_id):
+        """Stop a single instance"""
+        try:
+            print(f"Stopping instance {instance_id}...")
+            self.compute_client.instance_action(instance_id, "STOP")
+            
+            while True:
+                get_instance = self.compute_client.get_instance(instance_id)
+                state = get_instance.data.lifecycle_state
+                if state == "STOPPED":
+                    break
+                print(f"Waiting for instance {instance_id} to stop... Current state: {state}")
+                time.sleep(5)
+            
+            return instance_id
         except Exception as e:
-            print(f"Error during destroy operation: {str(e)}")
+            print(f"Error stopping instance {instance_id}: {str(e)}")
             raise
+
+    def start_instance(self, instance_id):
+        """Start a single instance"""
+        try:
+            print(f"Starting instance {instance_id}...")
+            self.compute_client.instance_action(instance_id, "START")
+            
+            while True:
+                get_instance = self.compute_client.get_instance(instance_id)
+                state = get_instance.data.lifecycle_state
+                if state == "RUNNING":
+                    break
+                print(f"Waiting for instance {instance_id} to start... Current state: {state}")
+                time.sleep(5)
+            
+            return instance_id
+        except Exception as e:
+            print(f"Error starting instance {instance_id}: {str(e)}")
+            raise
+
+    def manage_instances(self, action, instance_ids):
+        """Manage (stop/start) multiple instances concurrently"""
+        if not instance_ids:
+            print("No instance IDs provided.")
+            return
+
+        action_method = self.stop_instance if action == "stop" else self.start_instance
+        print(f"Starting {action} operation for {len(instance_ids)} instances...")
+        
+        completed_count = 0
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = [executor.submit(action_method, instance_id) 
+                      for instance_id in instance_ids]
+            
+            for future in as_completed(futures):
+                try:
+                    instance_id = future.result()
+                    completed_count += 1
+                    print(f"Successfully {action}ed instance {instance_id}")
+                except Exception as e:
+                    print(f"Failed to {action} instance: {str(e)}")
+
+        print(f"Successfully {action}ed {completed_count} out of {len(instance_ids)} instances!")
+
+    def get_instance_id_by_hostname(self, hostname):
+        """Retrieve instance ID by hostname from the YAML file"""
+        try:
+            with open(self.yaml_file, 'r') as f:
+                yaml_config = yaml.safe_load(f)
+                for node in yaml_config.get('nodes', []):
+                    if node.get('hostname') == hostname:
+                        return node.get('instance_id')
+        except FileNotFoundError:
+            print(f"YAML file {self.yaml_file} not found.")
+        return None
+
+    def manage_instances_by_hostname(self, action, hostnames):
+        """Manage (stop/start/terminate) instances by hostname"""
+        instance_ids = [self.get_instance_id_by_hostname(hostname) for hostname in hostnames]
+        instance_ids = list(filter(None, instance_ids))  # Remove None values
+
+        if not instance_ids:
+            print("No valid instance IDs found for the provided hostnames.")
+            return
+
+        if action == "terminate":
+            self.destroy_nodes(instance_ids)
+        else:
+            self.manage_instances(action, instance_ids)
 
 def main():
     parser = argparse.ArgumentParser(description='OCI Node Manager')
-    parser.add_argument('action', choices=['deploy', 'destroy'], help='Action to perform')
+    parser.add_argument('action', choices=['deploy', 'destroy', 'stop', 'start'], 
+                       help='Action to perform')
     parser.add_argument('--count', type=int, help='Number of nodes to deploy', default=1)
-    parser.add_argument('--concurrent', type=int, help='Maximum concurrent operations', default=5)
+    parser.add_argument('--concurrent', type=int, help='Maximum concurrent operations', 
+                       default=5)
+    parser.add_argument('--basename', type=str, help='Base name for the nodes', 
+                        default='uday-test')
+    parser.add_argument('--hostnames', nargs='+', help='List of hostnames to manage')
     
     args = parser.parse_args()
     
@@ -295,9 +436,19 @@ def main():
     manager.max_workers = args.concurrent
     
     if args.action == 'deploy':
-        manager.deploy_nodes(args.count)
-    else:
-        manager.destroy_nodes()
+        manager.deploy_nodes(args.count, args.basename)
+    elif args.action == 'destroy':
+        if args.hostnames:
+            # Selective termination by hostname
+            manager.manage_instances_by_hostname('terminate', args.hostnames)
+        else:
+            # Terminate all instances
+            manager.destroy_nodes()
+    elif args.action in ['stop', 'start']:
+        if not args.hostnames:
+            print(f"Please provide hostnames to {args.action}")
+            return
+        manager.manage_instances_by_hostname(args.action, args.hostnames)
 
 if __name__ == "__main__":
     main()
