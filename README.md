@@ -104,21 +104,14 @@ pip3 install oci paramiko pyyaml python-dotenv
 
 ### Configuration Setup
 
-1. Edit the configuration in `oci_node_manager.py`. Update the following values in the `__init__` method:
+1. Edit the configuration in `oci_node_manager.py`. Update the following values in the `.env` file:
 ```python
-self.config = {
-    "tenancy": "your-tenancy-ocid",
-    "user": "your-user-ocid",
-    "fingerprint": "your-api-key-fingerprint",
-    "key_file": "/path/to/your/oci_private_key.pem",
-    "region": "your-region",  # e.g., "us-phoenix-1"
-    "compartment_id": "your-compartment-ocid",
-    "availability_domain": "your-AD",  # e.g., "PaOl:PHX-AD-3"
-    "subnet_id": "your-subnet-ocid",
-    "image_id": "your-image-ocid",  # Ubuntu image OCID
-    "ssh_public_key_path": "/path/to/your/id_rsa.pub",
-    "ssh_private_key_path": "/path/to/your/id_rsa"
-}
+# .env.example
+   USER_OCID=your-user-ocid
+   FINGERPRINT=your-api-key-fingerprint
+   KEY_FILE_PATH=/path/to/your/oci_private_key.pem
+   SSH_PUBLIC_KEY_PATH=/path/to/your/id_rsa.pub
+   SSH_PRIVATE_KEY_PATH=/path/to/your/id_rsa
 ```
 
 2. Make the script executable:
@@ -129,7 +122,7 @@ chmod +x oci_node_manager.py
 ### Usage
 
 #### Deploy Nodes
-- Deploy a single node:
+- Deploy a single node: #default name is "rafay-paas"
   ```bash
   ./oci_node_manager.py deploy --count 1
   ```
@@ -159,30 +152,30 @@ chmod +x oci_node_manager.py
 | Flag | Description | Default | Example |
 |------|-------------|---------|---------|
 | `--count` | Number of nodes to deploy | 1 | `--count 5` |
-| `--basename` | Base name for instance naming | uday-test | `--basename worker` |
+| `--basename` | Base name for instance naming | rafay-paas | `--basename worker` |
 | `--concurrent` | Maximum concurrent operations | 5 | `--concurrent 8` |
 
 ### Node Naming
 - Nodes are automatically numbered sequentially
 - Numbering continues from the last used index in nodes.yaml
-- Example sequence with `--basename worker`:
-  - First deployment: worker-1, worker-2, worker-3
-  - Second deployment: worker-4, worker-5, worker-6
+- Example sequence with `--basename rafay-paas`:
+  - First deployment: rafay-paas-1, rafay-paas-2, rafay-paas-3
+  - Second deployment: rafay-paas-4, rafay-paas-5, rafay-paas-6
 
 #### Manage Nodes by Hostname
 - Stop specific nodes by hostname:
   ```bash
-  ./oci_node_manager.py stop --hostnames node-name-1 node-name-2
+  ./oci_node_manager.py stop --hostnames rafay-paas-1 rafay-paas-2
   ```
 
 - Start specific nodes by hostname:
   ```bash
-  ./oci_node_manager.py start --hostnames node-name-1 node-name-2
+  ./oci_node_manager.py start --hostnames rafay-paas-1 rafay-paas-2
   ```
 
 - Destroy specific nodes by hostname:
   ```bash
-  ./oci_node_manager.py destroy --hostnames node-name-1 node-name-2
+  ./oci_node_manager.py destroy --hostnames rafay-paas-1 rafay-paas-2
   ```
 
 #### Destroy Nodes
@@ -193,7 +186,7 @@ chmod +x oci_node_manager.py
 
 - Destroy specific nodes by hostname:
   ```bash
-  ./oci_node_manager.py destroy --hostnames worker-1 worker-2
+  ./oci_node_manager.py destroy --hostnames rafay-paas-1 rafay-paas-2
   ```
 
 - Destroy with custom concurrency:
@@ -203,7 +196,7 @@ chmod +x oci_node_manager.py
 
 - Combine multiple flags:
   ```bash
-  ./oci_node_manager.py destroy --hostnames worker-1 worker-2 --concurrent 3
+  ./oci_node_manager.py destroy --hostnames rafay-paas-1 rafay-paas-2 --concurrent 3
   ```
 
 ### Available Destroy Flags
@@ -226,7 +219,7 @@ chmod +x oci_node_manager.py
 
 ### Important Notes
 - The script uses the VM.Standard.E4.Flex shape with 1 OCPU and 4GB RAM by default
-- Instances are named as "uday-test-1", "uday-test-2", etc.
+- Instances are named as "rafay-paas-1", "rafay-paas-2", etc.
 - The script automatically configures iptables rules on the instances
 - Maximum concurrent operations can be adjusted using the `--concurrent` flag
 - Default concurrency is set to 5 to respect API rate limits
