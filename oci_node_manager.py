@@ -24,7 +24,7 @@ class OCINodeManager:
             "compartment_id": "ocid1.tenancy.oc1..aaaaaaaaaa3ghjcqbrbzmssbzhxzhxf24rpmuyxbaxwcj2axwoqkpd56ljkq",
             "availability_domain": "PaOl:PHX-AD-3",
             "subnet_id": "ocid1.subnet.oc1.phx.aaaaaaaay3bdnbnek22wxpjwn5fwli6kpfmi3n2dtj5soexyflcaievm4ogq",
-            "image_id": "ocid1.image.oc1.phx.aaaaaaaabs7vrxje4vil2yaijt3rwuk6ylnxnlza5p3ovj7t7kwrqih3bfta",
+            "image_id": "ocid1.image.oc1.phx.aaaaaaaaualravz5pufpmyzqevsrmqjmcwjmep3gddvai6dgzvgd7ku7ovyq",
             "ssh_public_key_path": os.getenv("SSH_PUBLIC_KEY_PATH"),
             "ssh_private_key_path": os.getenv("SSH_PRIVATE_KEY_PATH")
         }
@@ -51,10 +51,10 @@ class OCINodeManager:
         instance_details = oci.core.models.LaunchInstanceDetails(
             availability_domain=self.config["availability_domain"],
             compartment_id=self.config["compartment_id"],
-            shape="VM.Standard.E4.Flex",
+            shape="VM.Standard.E5.Flex",
             shape_config=oci.core.models.LaunchInstanceShapeConfigDetails(
-                ocpus=1,
-                memory_in_gbs=4
+                ocpus=10,
+                memory_in_gbs=32
             ),
             display_name=display_name,
             source_details=oci.core.models.InstanceSourceViaImageDetails(
@@ -110,6 +110,7 @@ class OCINodeManager:
                 commands = [
                     "sudo iptables -F",
                     "sudo apt remove -yq iptables-persistent --purge",
+                    "sudo apt update"
                     "sudo apt install bzip2"
                 ]
                 for cmd in commands:
