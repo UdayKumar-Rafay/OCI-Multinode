@@ -51,7 +51,7 @@ class OCINodeManager:
         instance_details = oci.core.models.LaunchInstanceDetails(
             availability_domain=self.config["availability_domain"],
             compartment_id=self.config["compartment_id"],
-            shape="VM.Standard.E5.Flex",
+            shape="VM.Standard.E4.Flex",
             shape_config=oci.core.models.LaunchInstanceShapeConfigDetails(
                 ocpus=1,
                 memory_in_gbs=4
