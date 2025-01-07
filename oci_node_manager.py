@@ -53,8 +53,8 @@ class OCINodeManager:
             compartment_id=self.config["compartment_id"],
             shape="VM.Standard.E5.Flex",
             shape_config=oci.core.models.LaunchInstanceShapeConfigDetails(
-                ocpus=10,
-                memory_in_gbs=32
+                ocpus=1,
+                memory_in_gbs=4
             ),
             display_name=display_name,
             source_details=oci.core.models.InstanceSourceViaImageDetails(
