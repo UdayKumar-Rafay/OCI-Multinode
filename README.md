@@ -121,6 +121,16 @@ chmod +x oci_node_manager.py
 
 ### Usage
 
+#### Change compute shape and size
+- Go to funtion create_instance in oci_node_manager.py and modify the shape and size of instances.
+```python
+  shape="VM.Standard.E4.Flex",
+            shape_config=oci.core.models.LaunchInstanceShapeConfigDetails(
+                ocpus=1,
+                memory_in_gbs=4
+            ),
+  ```
+
 #### Deploy Nodes
 - Deploy a single node: #default name is "rafay-paas"
   ```bash
