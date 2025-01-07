@@ -125,10 +125,10 @@ chmod +x oci_node_manager.py
 - Go to funtion create_instance in oci_node_manager.py and modify the shape and size of instances.
 ```python
   shape="VM.Standard.E4.Flex",
-            shape_config=oci.core.models.LaunchInstanceShapeConfigDetails(
-                ocpus=1,
-                memory_in_gbs=4
-            ),
+  shape_config=oci.core.models.LaunchInstanceShapeConfigDetails(
+         ocpus=1,
+         memory_in_gbs=4
+            )
   ```
 
 #### Deploy Nodes
