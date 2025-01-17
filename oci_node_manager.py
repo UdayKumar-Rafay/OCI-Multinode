@@ -53,8 +53,13 @@ class OCINodeManager:
             compartment_id=self.config["compartment_id"],
             shape="VM.Standard.E4.Flex",
             shape_config=oci.core.models.LaunchInstanceShapeConfigDetails(
+<<<<<<< HEAD
                 ocpus=1,
                 memory_in_gbs=4
+=======
+                ocpus=4,
+                memory_in_gbs=16
+>>>>>>> 574671c (added a missing comma to install the bzip2)
             ),
             display_name=display_name,
             source_details=oci.core.models.InstanceSourceViaImageDetails(
